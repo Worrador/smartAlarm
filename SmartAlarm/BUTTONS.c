@@ -26,12 +26,12 @@ void config_set_alarm_interrupt()				// Maybe only falling edge is needed
 
 void enable_alarm_setting_interrupts()			// Maybe only falling edge is needed
 {
-	PCMSK0 |= (1 << PCINT0 | 1 << PCINT2 | 1 << PCINT4);   // set PCINT0-1-2 to trigger an interrupt on state change, maybe the first is enough
+	PCMSK0 |= (1 << PCINT0 | 1 << PCINT3 | 1 << PCINT4);   // set PCINT0-3-4 to trigger an interrupt on state change, maybe the first is enough
 }
 
 void disable_alarm_setting_interrupts()			// Maybe only falling edge is needed
 {  
-	PCMSK0 &= ~(1 << PCINT0 | 1 << PCINT2 | 1 << PCINT4);
+	PCMSK0 &= ~(1 << PCINT0 | 1 << PCINT3 | 1 << PCINT4);
 }
 
 void config_capsense()
@@ -61,7 +61,7 @@ ISR (PCINT0_vect)		// Ha nem megy akkor kell majd egy timer arra hogy nézze h f
 		}
 		
 	}
-	else if(((changedbits & (1 << PINB0)) || (changedbits & (1 << PINB2)) || (changedbits & (1 << PINB3))) && (STATE == SET_ALARM))
+	else if(((changedbits & (1 << PINB0)) || (changedbits & (1 << PINB3)) || (changedbits & (1 << PINB4))) && (STATE == SET_ALARM))
 	{
 		if(changedbits & (1 << PINB0))		// Hour
 		{
@@ -77,10 +77,10 @@ ISR (PCINT0_vect)		// Ha nem megy akkor kell majd egy timer arra hogy nézze h f
 			}
 		}
 			
-		else if(changedbits & (1 << PINB2))		// Quarter hours
+		else if(changedbits & (1 << PINB3))		// Quarter hours
 		{
 						
-			/* PCINT2 changed */
+			/* PCINT3 changed */
 			if(presscounter == 0)
 			{
 				new_alarmMinutes = (new_alarmMinutes < 45) ? (new_alarmMinutes + 15) : (new_alarmMinutes - 45);
@@ -93,7 +93,7 @@ ISR (PCINT0_vect)		// Ha nem megy akkor kell majd egy timer arra hogy nézze h f
 
 		else if(changedbits & (1 << PINB4))		// Minutes
 		{
-			/* PCINT3 changed */
+			/* PCINT4 changed */
 			if(presscounter == 0)
 			{
 				new_alarmMinutes = (new_alarmMinutes < 59) ? (new_alarmMinutes + 1) : 0;
@@ -114,38 +114,38 @@ ISR (PCINT0_vect)		// Ha nem megy akkor kell majd egy timer arra hogy nézze h f
 		{
 			event = capsens_touched;
 			presscounter++;
-			if(newCompareValue == 255)
+			if(newCompareValue == 65535)
 			{
 				
 				newCompareValue = 0;
-				config_pwm_timer(newCompareValue);
+				config_16bit_timer_pwm_duty_cycle(newCompareValue);
 				_delay_ms(10);
-				PRR |= (1 << PRTIM0);
+				PRR |= (1 << PRTIM1);
 			}
 			else
 			{
-				if(newCompareValue < 10)
+				if(newCompareValue < 2500)		// TODO: new values,and/or timer for the touchsensor
 				{
-					newCompareValue = 10;
+					newCompareValue = 2500;
 				}
-				else if(newCompareValue < 55)
+				else if(newCompareValue < 14000)
 				{
-					newCompareValue = 55;
+					newCompareValue = 14000;
 				}
-				else if(newCompareValue < 110)
+				else if(newCompareValue < 28000)
 				{
-					newCompareValue = 110;
+					newCompareValue = 28000;
 				}
-				else if(newCompareValue < 175)
+				else if(newCompareValue < 45000)
 				{
-					newCompareValue = 175;
+					newCompareValue = 45000;
 				}
 				else
 				{
-					newCompareValue = 255;
+					newCompareValue = 65535;
 				}
-				PRR &= ~(1 << PRTIM0);
-				config_pwm_timer(newCompareValue);
+				PRR &= ~(1 << PRTIM1);
+				config_16bit_timer_pwm_duty_cycle(newCompareValue);
 			}
 		}else
 		{

@@ -114,49 +114,14 @@ uint16_t enum2base_address(weekDay day)
 void update_brigthness()
 {
 	// Every time this function is called the time variable should be incremented by one.
-	if(newCompareValue < 10)
-	{
-		if(UpdateEvery10times == 60)
-		{
-			newCompareValue += 1;
-			UpdateEvery10times = 0;
-		}
-		UpdateEvery10times++;
-	}
-	if (newCompareValue < 20)
-	{
-		if(UpdateEvery5times == 20)
-		{
-			newCompareValue += 1;
-			UpdateEvery5times = 0;
-		}
-		UpdateEvery5times++;
-		
-	}
-	else if(newCompareValue < 50)
-	{
-		if(UpdateEvery2timesFlag == false)
-		{
-			newCompareValue += 1;
-			UpdateEvery2timesFlag = true;
-		}
-		else
-		{
-			UpdateEvery2timesFlag = false;
-		}
-	}
-	else if(newCompareValue < 200)
-	{
-		newCompareValue += 1;
-	}
-	else
-	{
-		newCompareValue += 5;
-	}
+	newCompareValue += 25;
 	
-	config_pwm_timer(newCompareValue);
-	if (newCompareValue >= 255)
+	config_16bit_timer_pwm_duty_cycle(newCompareValue);
+	if (newCompareValue >= 65000)
 	{
+		// Temporally:
+		newCompareValue = 65535;
+		config_16bit_timer_pwm_duty_cycle(newCompareValue);
 		event = waking_up_ended;
 	}
 }
@@ -253,6 +218,29 @@ void STATE_MACHINE_MAIN()
 					snprintf(data22,sizeof(data22),"\n\rCurrently set alarm: %s %d:%d\n\rToday is:%s\n\r",enum2str(test.dow),test.hours,test.minutes,enum2str(c_time.dow));
 					send_UART(data22);
 				}
+				if(strcmp(readData_array, "lol") == 0)
+				{
+					get_RTC_time();
+					unsigned char data32[80];
+					snprintf(data32,sizeof(data32),"\n\rCurrent time according to the rtc: %s %d:%d:%d\n\r",enum2str(test.dow),c_time.hours,c_time.minutes, c_time.seconds);
+					send_UART(data32);
+				}
+				/*if(strcmp(readData_array, "fos") == 0)
+				{
+					get_RTC_time();
+					c_time.dow = fri;
+					c_time.minutes--;
+					if(c_time.seconds < 35)
+					{
+						c_time.minutes--;
+						c_time.seconds = c_time.seconds + 25;
+					}
+					else
+					{
+						c_time.seconds = c_time.seconds - 35;
+					}
+					set_RTC(c_time);
+				}*/
 				
 				if(strcmp(readData_array, "ask") == 0)
 				{
@@ -483,16 +471,16 @@ int main(void)
 	// Peripheral and interrupt configurations and initializations:
 	config_gpio();					// every gpio ever used is configured here
 	config_I2C();
-	init_pwm_timer();				// the pwm timer is inited here, timer is diabled by default
 	config_UART();					// Config UART or Pc communication
 	config_capsense();				// Config capacitive sensor input
 	config_set_alarm_interrupt();	// set alarm button interrupt is configured and enabled here
 	disable_alarm_setting_interrupts();
+	config_16bit_timer_to_pwm();
 	
 	// Read out actual time from rtc, the next timer interrupt going to write it to the LCD
 
 	get_RTC_time();
-	if((new_currentHours >= 23) || (new_currentHours < 6))		// If the current hour is smaller than 6 or greater than 23 then turn the led off. Else turn it on
+	if((new_currentHours >= 23) || (new_currentHours < 9))		// If the current hour is smaller than 6 or greater than 23 then turn the led off. Else turn it on
 	{
 		LED &= ~(1 << 3);
 	}else
@@ -501,13 +489,13 @@ int main(void)
 	}
 
 
-	newCompareValue = 255;
+	newCompareValue = 0xFFFF;
 	refreshAlarm = true;
 	init_LCD();
 	update_LCD(new_currentHours, new_currentMinutes);
-	
-	init_oneSecond_timer();			// init the time counting timer
 	IntSqw_Set();					// Set the RTC interrupt output pin to give interrupt
+	Alarm2_Set(c_alarm2);
+	Alarm2_Enable();
 	Alarm2_IF_Reset();
 
 
@@ -520,21 +508,6 @@ int main(void)
 		{
 			refreshAlarm = false;
 			new_alarmTime = eeprom_read_word(enum2base_address(new_currentDay));		// Read the alarm for the current day
-			if((new_alarmTime >> 15) == 1)		// If its enabled
-			{
-				c_alarm2.dow = new_currentDay;
-				c_alarm2.hours = ((new_alarmTime >> 8) & 0x007F);							// Cut down the enable signal and shift
-				c_alarm2.minutes = (new_alarmTime & 0x00FF);								// Cut down the hours
-				Alarm2_Set(c_alarm2);
-				// Enable rtc interrupt
-
-				Alarm2_Enable();
-			}
-			else								// If its diabled
-			{
-				// Disable RTC interrupt
-				Alarm2_Disable();
-			}
 		}
     }
 }

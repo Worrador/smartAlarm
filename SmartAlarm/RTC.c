@@ -84,12 +84,13 @@ void get_RTC_time()
 	new_currentMinutes = c_time.minutes;
 	new_currentHours = c_time.hours;
 	secondsCntr = c_time.seconds;
-}
 
+	// Here should be a define for the difference between thee actual and the received time data
+}
 
 // sets alarm2 details
 void Alarm2_Set(RTC_Time time_t)
-{	
+{
 	// convert decimal to BCD
 	uint8_t hours   = decimal_to_bcd(time_t.hours);
 	uint8_t minutes = decimal_to_bcd(time_t.minutes);
@@ -100,15 +101,14 @@ void Alarm2_Set(RTC_Time time_t)
 	_delay_ms(5);
 	write_I2C_message(DS3231_REG_AL2_MIN);
 	_delay_ms(5);
-	write_I2C_message(minutes);
+	write_I2C_message(minutes | 0x80);		// send zero on first bit if normal mode needed, if 1 interrupt per minute, then send 1 on first bit
 	_delay_ms(5);
-	write_I2C_message(hours);
+	write_I2C_message(hours | 0x80);		// send zero on first bit if normal mode needed, if 1 interrupt per minute, then send 1 on first bit
 	_delay_ms(5);
 	write_I2C_message(time_t.dow | 0x40 | (1 << 7));
 
 	send_I2C_stop();
 }
-
 
 
 void IntSqw_Set()
